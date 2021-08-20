@@ -51,6 +51,7 @@ importList(){
 
 	ipset swap $1 $1-TMP &> /dev/null
 	ipset destroy $1-TMP &> /dev/null
+	ipset save > /etc/iptables/ipsets
 
 	# only create if the iptables rules don't already exist
 	if ! echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
