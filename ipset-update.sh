@@ -14,8 +14,8 @@ COUNTRIES=(af ae ir iq tr cn sa sy ru tw ua us uz hk id kz kw ly vn zw)
 
 # bluetack lists to use - they now obfuscate these so get them from
 # https://www.iblocklist.com/lists.php
-BLUETACKALIAS=(DShield Bogon Hijacked DROP ForumSpam WebExploit Ads Proxies BadSpiders CruzIT Zeus Palevo Malicious Malcode Adservers)
-BLUETACK=(xpbqleszmajjesnzddhv lujdnbasfaaixitgmxpp usrcshglbiilevmyfhse zbdlwrqkabxbcppvrnos ficutxiwawokxlcyoeye ghlzqtqxnzctvvajwwag dgxtneitpuvgqqcpfulq xoebmbyexwuiogmbyprb mcvxsnihddgutbjfbghy czvaehmjpsnwwttrdoyl ynkdjqsjyfmilsgbogqf erqajhwrxiuvjxqrrwfj npkuuhuxcsllnhoamkvm pbqcylkejciyhmwttify zhogegszwduurnvsyhdf) 
+BLUETACKALIAS=(DShield Bogon Hijacked DROP ForumSpam WebExploit Ads Proxies BadSpiders CruzIT Malicious Malcode Adservers)
+BLUETACK=(xpbqleszmajjesnzddhv gihxqmhyunbxhbmgqrla usrcshglbiilevmyfhse zbdlwrqkabxbcppvrnos ficutxiwawokxlcyoeye ghlzqtqxnzctvvajwwag dgxtneitpuvgqqcpfulq xoebmbyexwuiogmbyprb mcvxsnihddgutbjfbghy czvaehmjpsnwwttrdoyl npkuuhuxcsllnhoamkvm pbqcylkejciyhmwttify zhogegszwduurnvsyhdf) 
 # ports to block tor users from
 PORTS=(80 443 6667 22 21)
 DELETE_RULES=0
@@ -41,34 +41,39 @@ importList(){
 		ipset flush $1-TMP &> /dev/null
 
 	#the second param determines if we need to use zcat or not
-	if [ $2 = 1 ]; then
-		echo "unzipping $LISTDIR/$1.gz and creating list"
-		zcat $LISTDIR/$1.gz | grep  -v \# | grep -v ^$ | grep -v 127\.0\.0 | pg2ipset - - $1-TMP | ipset restore
+		if [ $2 = 1 ]; then
+			echo "unzipping $LISTDIR/$1.gz and creating list"
+			zcat $LISTDIR/$1.gz | grep  -v \# | grep -v ^$ | grep -v 127\.0\.0 | pg2ipset - - $1-TMP | ipset restore
+		else
+			echo "parsing $LISTDIR/$1.txt with awk and creating list"
+			awk '!x[$0]++' $LISTDIR/$1.txt | grep  -v \# | grep -v ^$ |  grep -v 127\.0\.0 | sed -e "s/^/add\ \-exist\ $1\-TMP\ /" | ipset restore
+		fi
+	
+		ipset swap $1 $1-TMP &> /dev/null
+		ipset destroy $1-TMP &> /dev/null
+	
+		# only create if the iptables rules don't already exist
+		if ! echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
+			iptables -I INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST IN] $1" --log-level 4
+			iptables -I INPUT -m set --match-set $1 src -j DROP
+	
+			iptables -I FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4
+			iptables -I FORWARD -m set --match-set $1 src -j DROP
+	
+			iptables -I OUTPUT -m set --match-set $1 src -j DROP
+			iptables -I OUTPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4
+	
+			iptables -I FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4
+			iptables -I FORWARD -m set --match-set $1 dst -j REJECT
+	
+			iptables -I OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4
+			iptables -I OUTPUT -m set --match-set $1 dst -j REJECT
+	
+		else
+			echo "iptables rules already exist - not updating"
+		fi
 	else
-		echo "parsing $LISTDIR/$1.txt with awk and creating list"
-		awk '!x[$0]++' $LISTDIR/$1.txt | grep  -v \# | grep -v ^$ |  grep -v 127\.0\.0 | sed -e "s/^/add\ \-exist\ $1\-TMP\ /" | ipset restore
-	fi
-
-	ipset swap $1 $1-TMP &> /dev/null
-	ipset destroy $1-TMP &> /dev/null
-	ipset save > /etc/iptables/ipsets
-
-	# only create if the iptables rules don't already exist
-	if ! echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
-		iptables -A INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked input $1" --log-level 4
-		iptables -A FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4
-		iptables -A FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4
-		iptables -A OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked out $1" --log-level 4
-
-		iptables -A INPUT -m set --match-set $1 src -j DROP
-		iptables -A FORWARD -m set --match-set $1 src -j DROP
-		iptables -A FORWARD -m set --match-set $1 dst -j REJECT
-		iptables -A OUTPUT -m set --match-set $1 dst -j REJECT
-	else
-		echo "iptables rules already exist - not updating"
-	fi
-else
-	echo "List $1.txt does not exist."
+		echo "List $1.txt does not exist."
 	fi
 }
 
@@ -78,21 +83,25 @@ removeRule(){
 
 	# only remove if the iptables rules already exist
 	if echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
-		iptables -D INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked input $1" --log-level 4 || true
-		iptables -D FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4 || true
-		iptables -D FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4 || true
-		iptables -D OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked out $1" --log-level 4 || true
-
 		iptables -D INPUT -m set --match-set $1 src -j DROP || true
+		iptables -D INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST IN] $1" --log-level 4 || true
+
 		iptables -D FORWARD -m set --match-set $1 src -j DROP || true
+		iptables -D FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4 || true
+
+		iptables -D OUTPUT -m set --match-set $1 src -j DROP || true
+		iptables -D OUTPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4 || true
+
 		iptables -D FORWARD -m set --match-set $1 dst -j REJECT || true
+		iptables -D FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4 || true
+
 		iptables -D OUTPUT -m set --match-set $1 dst -j REJECT || true
+		iptables -D OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4 || true
 	else
 		echo "iptables rules don't exist - not removing"
 	fi
 
 	ipset destroy $1 &> /dev/null
-	ipset save > /etc/iptables/ipsets
 }
 
 updateLists() {
