@@ -90,6 +90,9 @@ removeRule(){
 	else
 		echo "iptables rules don't exist - not removing"
 	fi
+
+	ipset destroy $1 &> /dev/null
+	ipset save > /etc/iptables/ipsets
 }
 
 updateLists() {
