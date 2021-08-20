@@ -7,4 +7,5 @@ clean:
 	rm pg2ipset
 
 install:
-	install pg2ipset /usr/bin/pg2ipset
+	install pg2ipset /usr/local/bin/pg2ipset
+	install ipset-update.sh /usr/local/bin/ipset-update
