@@ -10,7 +10,7 @@ LISTDIR="/var/cache/blocklists"
 [ ! -d $LISTDIR ] && mkdir $LISTDIR
 
 # countries to block, must be lcase
-COUNTRIES=(af ae ir iq tr cn sa sy ru tw ua us uz hk id kz kw ly vn zw)
+COUNTRIES=(af ae ir iq tr cn sa sy ru tw ua uz hk id kz kw ly vn zw)
 
 # bluetack lists to use - they now obfuscate these so get them from
 # https://www.iblocklist.com/lists.php
