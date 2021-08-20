@@ -55,10 +55,10 @@ importList(){
 
 	# only create if the iptables rules don't already exist
 	if ! echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
-		iptables -A INPUT -m set --match-set $1 src -j LOG --log-prefix "Blocked input $1"
-		iptables -A FORWARD -m set --match-set $1 src -j LOG --log-prefix "Blocked fwd $1"
-		iptables -A FORWARD -m set --match-set $1 dst -j LOG --log-prefix "Blocked fwd $1"
-		iptables -A OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "Blocked out $1"
+		iptables -A INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked input $1" --log-level 4
+		iptables -A FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4
+		iptables -A FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4
+		iptables -A OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked out $1" --log-level 4
 
 		iptables -A INPUT -m set --match-set $1 src -j DROP
 		iptables -A FORWARD -m set --match-set $1 src -j DROP
@@ -78,10 +78,10 @@ removeRule(){
 
 	# only remove if the iptables rules already exist
 	if echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
-		iptables -D INPUT -m set --match-set $1 src -j LOG --log-prefix "Blocked input $1" || true
-		iptables -D FORWARD -m set --match-set $1 src -j LOG --log-prefix "Blocked fwd $1" || true
-		iptables -D FORWARD -m set --match-set $1 dst -j LOG --log-prefix "Blocked fwd $1" || true
-		iptables -D OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "Blocked out $1" || true
+		iptables -D INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked input $1" --log-level 4 || true
+		iptables -D FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4 || true
+		iptables -D FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked fwd $1" --log-level 4 || true
+		iptables -D OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST] Blocked out $1" --log-level 4 || true
 
 		iptables -D INPUT -m set --match-set $1 src -j DROP || true
 		iptables -D FORWARD -m set --match-set $1 src -j DROP || true

@@ -9,3 +9,4 @@ clean:
 install:
 	install pg2ipset /usr/local/bin/pg2ipset
 	install ipset-update.sh /usr/local/bin/ipset-update
+	cp -a 20-blocklist.conf /etc/rsyslog.d/20-blocklist.conf
