@@ -14,8 +14,8 @@ COUNTRIES=(af ae ir iq tr cn sa sy ru tw ua uz hk id kz kw ly vn zw)
 
 # bluetack lists to use - they now obfuscate these so get them from
 # https://www.iblocklist.com/lists.php
-BLUETACKALIAS=(DShield Bogon Hijacked DROP ForumSpam WebExploit Ads Proxies BadSpiders CruzIT Malicious Malcode Adservers)
-BLUETACK=(xpbqleszmajjesnzddhv gihxqmhyunbxhbmgqrla usrcshglbiilevmyfhse zbdlwrqkabxbcppvrnos ficutxiwawokxlcyoeye ghlzqtqxnzctvvajwwag dgxtneitpuvgqqcpfulq xoebmbyexwuiogmbyprb mcvxsnihddgutbjfbghy czvaehmjpsnwwttrdoyl npkuuhuxcsllnhoamkvm pbqcylkejciyhmwttify zhogegszwduurnvsyhdf) 
+BLUETACKALIAS=(DShield Hijacked DROP ForumSpam WebExploit Ads Proxies BadSpiders CruzIT Malicious Malcode Adservers)
+BLUETACK=(xpbqleszmajjesnzddhv usrcshglbiilevmyfhse zbdlwrqkabxbcppvrnos ficutxiwawokxlcyoeye ghlzqtqxnzctvvajwwag dgxtneitpuvgqqcpfulq xoebmbyexwuiogmbyprb mcvxsnihddgutbjfbghy czvaehmjpsnwwttrdoyl npkuuhuxcsllnhoamkvm pbqcylkejciyhmwttify zhogegszwduurnvsyhdf) 
 # ports to block tor users from
 PORTS=(80 443 6667 22 21)
 DELETE_RULES=0
@@ -54,20 +54,20 @@ importList(){
 	
 		# only create if the iptables rules don't already exist
 		if ! echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
-			iptables -I INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST IN] $1" --log-level 4
 			iptables -I INPUT -m set --match-set $1 src -j DROP
+			iptables -I INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK-IPSET IN] $1 " --log-level 4
 	
-			iptables -I FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4
 			iptables -I FORWARD -m set --match-set $1 src -j DROP
+			iptables -I FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK-IPSET FW] $1 " --log-level 4
 	
+			iptables -I OUTPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK-IPSET OUT] $1 " --log-level 4
 			iptables -I OUTPUT -m set --match-set $1 src -j DROP
-			iptables -I OUTPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4
 	
-			iptables -I FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4
 			iptables -I FORWARD -m set --match-set $1 dst -j REJECT
+			iptables -I FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK-IPSET FW] $1 " --log-level 4
 	
-			iptables -I OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4
 			iptables -I OUTPUT -m set --match-set $1 dst -j REJECT
+			iptables -I OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK-IPSET OUT] $1 " --log-level 4
 	
 		else
 			echo "iptables rules already exist - not updating"
@@ -84,19 +84,19 @@ removeRule(){
 	# only remove if the iptables rules already exist
 	if echo $IPTABLES|grep -q "\-A\ INPUT\ \-m\ set\ \-\-match\-set\ $1\ src\ \-\j\ DROP"; then
 		iptables -D INPUT -m set --match-set $1 src -j DROP || true
-		iptables -D INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST IN] $1" --log-level 4 || true
+		iptables -D INPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK-IPSET IN] $1 " --log-level 4 || true
 
 		iptables -D FORWARD -m set --match-set $1 src -j DROP || true
-		iptables -D FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4 || true
+		iptables -D FORWARD -m set --match-set $1 src -j LOG --log-prefix "[BLOCK-IPSET FW] $1 " --log-level 4 || true
 
 		iptables -D OUTPUT -m set --match-set $1 src -j DROP || true
-		iptables -D OUTPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4 || true
+		iptables -D OUTPUT -m set --match-set $1 src -j LOG --log-prefix "[BLOCK-IPSET OUT] $1 " --log-level 4 || true
 
 		iptables -D FORWARD -m set --match-set $1 dst -j REJECT || true
-		iptables -D FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST FW] $1" --log-level 4 || true
+		iptables -D FORWARD -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK-IPSET FW] $1 " --log-level 4 || true
 
 		iptables -D OUTPUT -m set --match-set $1 dst -j REJECT || true
-		iptables -D OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK LIST OUT] $1" --log-level 4 || true
+		iptables -D OUTPUT -m set --match-set $1 dst -j LOG --log-prefix "[BLOCK-IPSET OUT] $1 " --log-level 4 || true
 	else
 		echo "iptables rules don't exist - not removing"
 	fi
